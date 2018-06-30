@@ -55,6 +55,9 @@ def load(path_or_file, **kwargs):
 
 
 def missing_values_untyped(series, max=0, values=['', 'NA']):
+    '''
+    Reports number of missing values in a series
+    '''
     strings = series[series.apply(lambda v: isinstance(v, six.string_types))]
     values = set(values)
     na = strings.apply(lambda v: v in values).sum()
@@ -71,8 +74,14 @@ def missing_values_untyped(series, max=0, values=['', 'NA']):
         }
 
 
-def duplicate_rows(data):
-    pass
+def duplicate_rows_untyped(data):
+    count_duplicates = data.duplicated().sum()
+    if count_duplicates > 0:
+        return {
+            'code': 'duplicate_rows_untyped',
+            'message': '{:.0f} duplicate rows'.format(count_duplicates),
+            'duplicates': count_duplicates,
+        }
 
 
 def check_numeric(series):
@@ -82,6 +91,44 @@ def check_numeric(series):
     - If it's clearly not numeric, no errors
     '''
     pass
+
+
+def count_outliers_typed(series, low=None, high=None, max=0):
+    '''Given a numerical series, counts number of outliers
+    - If low is not specified, 2 percentile is taken
+    - If high is not specified, 98 percentile is taken
+
+    '''
+    q1 = series.quantile(0.25)
+    q3 = series.quantile(0.75)
+    iqr = q3 - q1
+    if low is None:
+        low = q1 - 1.5 * iqr
+    if high is None:
+        high = q3 + 1.5 * iqr
+    lower_outliers = series[series < low].shape[0]
+    upper_outliers = series[series > high].shape[0]
+    outliers = lower_outliers + upper_outliers
+    if outliers > max:
+        return {
+            'code': 'count_outliers_typed',
+            'message': '{}: {:.0f} outlier values'.format(series.name, outliers),
+            'series': series.name,
+            'outliers': outliers,
+            'lower_outliers': lower_outliers,
+            'upper_outliers': upper_outliers,
+            'low': low,
+            'high': high,
+        }
+
+
+def count_categorical_outliers_typed(series):
+    '''
+    Given a numerical series, counts number of outliers
+    '''
+    freqs = series.value_counts()
+    return count_outliers_typed(freqs, high=freqs.max())
+
 
 
 registry = {
@@ -94,3 +141,5 @@ registry = {
     'column-typed': [],
 }
 registry['column-untyped'].append(missing_values_untyped)
+registry['data-untyped'].append(duplicate_rows_untyped)
+registry['column-typed'].append(count_outliers_typed)

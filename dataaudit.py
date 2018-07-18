@@ -1,6 +1,7 @@
 import os
 import six
 import pandas as pd
+import numpy as np
 
 
 def check(source, **kwargs):
@@ -51,7 +52,7 @@ def load(path_or_file, **kwargs):
       the file could not be loaded
     - ``error``: a list of file format or column types data errors
     '''
-    pass
+    # pass
 
 
 def missing_values_untyped(series, max=0, values=['', 'NA']):
@@ -80,6 +81,35 @@ def duplicate_rows_untyped(data):
         return {
             'code': 'duplicate_rows_untyped',
             'message': '{:.0f} duplicate rows'.format(count_duplicates),
+            'duplicates': count_duplicates,
+        }
+
+
+def duplicate_columns_name(filepath, file_extension):
+    '''
+    Function to count duplicate columns names.'''
+    count_duplicates = len(duplicate_column_headers(filepath, file_extension))
+    if count_duplicates > 0:
+        return {
+            'code': 'duplicate_column_headers',
+            'message': '{:.0f} duplicate columns'.format(count_duplicates),
+            'duplicates': count_duplicates,
+        }
+
+
+def duplicate_columns_untyped(filepath, file_extension):
+    '''
+    To check duplicate data within multiple columns which is having
+    different column name or same column name.'''
+    if file_extension == 'csv':
+        data = pd.read_csv(filepath, encoding='utf-8')
+    elif file_extension == 'excel':
+        data = pd.read_excel(filepath, encoding='utf-8')
+    count_duplicates = len(duplicate_datacolumns(data))
+    if count_duplicates > 0:
+        return {
+            'code': 'duplicate_columns_untyped',
+            'message': '{:.0f} duplicate columns'.format(count_duplicates),
             'duplicates': count_duplicates,
         }
 
@@ -129,6 +159,76 @@ def count_categorical_outliers_typed(series):
     freqs = series.value_counts()
     return count_outliers_typed(freqs, high=freqs.max())
 
+
+def duplicate_column_headers(filepath, file_extension):
+    '''
+    Read given file based on file_extension and return duplicate count.
+    '''
+    if file_extension == 'csv':
+        header_row = read_csv_file(filepath)
+    elif file_extension == 'excel':
+        header_row = read_excel_file(filepath)
+    header_dict = {i: header_row.count(i) for i in header_row}
+    duplic_arr = [key for key, value in header_dict.items() if value > 1]
+    return duplic_arr
+
+
+
+def read_csv_file(filepath):
+    '''
+    Read given CSV file.
+    '''
+    import csv
+    f_data = []
+    with open(filepath) as csvfile:
+        data_r = csv.reader(csvfile)
+        f_data = [i for i in data_r]
+    header_row = f_data[0]
+    return header_row
+
+
+
+def read_excel_file(filepath):
+    '''
+    Read Given excel file.
+    '''
+    import xlrd
+    wb = xlrd.open_workbook(filepath)
+    sheet = wb.sheet_by_index(0)
+    header_row = sheet.row_values(0)
+    return header_row
+
+
+def duplicate_datacolumns(data):
+    '''
+    Given a data identify same columns based on dtype.
+    '''
+    groups = data.columns.to_series().groupby(data.dtypes).groups
+    dups = []
+    for t, v in groups.items():
+        cs = data[v].columns
+        vs = data[v]
+        lcs = len(cs)
+        for i in range(lcs):
+            for j in range(i+1, lcs):
+                fill_na_flag = False   
+                if t == np.float64 or t == np.int64:
+                    iv_nan= vs.iloc[:,i].index[vs.iloc[:,i].apply(np.isnan)].values.tolist()
+                    jv_nan= vs.iloc[:,j].index[vs.iloc[:,j].apply(np.isnan)].values.tolist()
+                    if np.array_equiv(iv_nan, jv_nan):
+                        fill_na_flag = True
+                if fill_na_flag:
+                    iv_series = vs.iloc[:,i].fillna(0)
+                    jv_series = vs.iloc[:,j].fillna(0)
+                else:
+                    iv_series = vs.iloc[:,i]
+                    jv_series = vs.iloc[:,j]
+                iv = iv_series.tolist()
+                jv = jv_series.tolist()
+                if np.array_equiv(iv, jv):
+                    dups.append(cs[i])
+                    break
+    return dups
 
 
 registry = {

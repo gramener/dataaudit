@@ -21,10 +21,12 @@ def test_missing_values():
 
 def test_mutiple_columns():
     filename = os.path.join(repo, 'sales.csv')
-    print(dataaudit.duplicate_columns_name(filename, 'csv'))
-    print(dataaudit.duplicate_columns_untyped(filename, 'csv'))
-    # filename = os.path.join(repo, 'sales.xlsx')
-    # print(dataaudit.duplicate_columns_name(filename, 'excel'))
-    # print(dataaudit.duplicate_columns_untyped(filename, 'excel'))
+    header_row, data = dataaudit.load_data(filename, 'csv')
+    print(dataaudit.duplicate_columns_name(header_row))
+    print(dataaudit.duplicate_columns_untyped(data))
+    filename = os.path.join(repo, 'sales.xlsx')
+    header_row, data = dataaudit.load_data(filename, 'excel')
+    print(dataaudit.duplicate_columns_name(header_row))
+    print(dataaudit.duplicate_columns_untyped(data))
 
 test_mutiple_columns()

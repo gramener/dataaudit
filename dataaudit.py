@@ -1,5 +1,7 @@
 import os
 import six
+import csv
+import xlrd
 import pandas as pd
 import numpy as np
 
@@ -85,10 +87,10 @@ def duplicate_rows_untyped(data):
         }
 
 
-def duplicate_columns_name(filepath, file_extension):
+def duplicate_columns_name(header_row):
     '''
     Function to count duplicate columns names.'''
-    count_duplicates = len(duplicate_column_headers(filepath, file_extension))
+    count_duplicates = len(duplicate_column_headers(header_row))
     if count_duplicates > 0:
         return {
             'code': 'duplicate_column_headers',
@@ -97,14 +99,10 @@ def duplicate_columns_name(filepath, file_extension):
         }
 
 
-def duplicate_columns_untyped(filepath, file_extension):
+def duplicate_columns_untyped(data):
     '''
     To check duplicate data within multiple columns which is having
     different column name or same column name.'''
-    if file_extension == 'csv':
-        data = pd.read_csv(filepath, encoding='utf-8')
-    elif file_extension == 'excel':
-        data = pd.read_excel(filepath, encoding='utf-8')
     count_duplicates = len(duplicate_datacolumns(data))
     if count_duplicates > 0:
         return {
@@ -160,31 +158,42 @@ def count_categorical_outliers_typed(series):
     return count_outliers_typed(freqs, high=freqs.max())
 
 
-def duplicate_column_headers(filepath, file_extension):
+def duplicate_column_headers(header_row):
     '''
     Read given file based on file_extension and return duplicate count.
     '''
-    if file_extension == 'csv':
-        header_row = read_csv_file(filepath)
-    elif file_extension == 'excel':
-        header_row = read_excel_file(filepath)
     header_dict = {i: header_row.count(i) for i in header_row}
     duplic_arr = [key for key, value in header_dict.items() if value > 1]
     return duplic_arr
 
+
+def load_data(filepath, file_extension):
+    '''
+    Load data from file based on file type.  
+    '''
+    if file_extension == 'csv':
+        header_row, data = read_csv_file(filepath)
+    elif file_extension == 'excel':
+        header_row, data = read_excel_file(filepath)
+    return header_row, data
 
 
 def read_csv_file(filepath):
     '''
     Read given CSV file.
     '''
-    import csv
     f_data = []
+    delimiter = ","
     with open(filepath) as csvfile:
-        data_r = csv.reader(csvfile)
+        dialect = csv.Sniffer().sniff(csvfile.read(1024))
+        # Seek to beginning.
+        csvfile.seek(0)
+        data_r = csv.reader(csvfile, dialect)
+        delimiter = dialect.delimiter
         f_data = [i for i in data_r]
     header_row = f_data[0]
-    return header_row
+    data = pd.read_csv(filepath, encoding='utf-8', sep=delimiter)
+    return header_row, data
 
 
 
@@ -192,11 +201,11 @@ def read_excel_file(filepath):
     '''
     Read Given excel file.
     '''
-    import xlrd
     wb = xlrd.open_workbook(filepath)
     sheet = wb.sheet_by_index(0)
     header_row = sheet.row_values(0)
-    return header_row
+    data = pd.read_excel(filepath, encoding='utf-8')
+    return header_row, data
 
 
 def duplicate_datacolumns(data):

@@ -186,7 +186,7 @@ def read_csv_file(filepath):
         dialect = csv.Sniffer().sniff(csvfile.read(1024))
         csvfile.seek(0)
         delimiter = dialect.delimiter
-        header_row = next(csvfile).strip('').split(delimiter)
+        header_row = next(csvfile).strip('\n').split(delimiter)
     data = pd.read_csv(filepath, encoding='utf-8', sep=delimiter)
     return header_row, data
 
@@ -205,7 +205,21 @@ def read_excel_file(filepath):
 
 def duplicate_datacolumns(data):
     '''
-    Given a data identify same columns based on dtype.
+    Given a dataframe identify same columns based on dtype.
+    Input: dataframe
+         देश              city  product   sales  growth product.1  sales.1 growth.1
+        भारत         Hyderabad  Biscuit   866.1  -27.0%   Biscuit    866.1   -27.0%
+        भारत         Hyderabad  芯芯片片    26.4  -24.2%   芯芯片片     26.4   -24.2%
+        भारत         Hyderabad    Crème    38.3  -29.1%     Crème     38.3   -29.1%
+        भारत         Hyderabad     Eggs   513.7  -11.3%      Eggs    513.7   -11.3%
+        भारत         Bangalore  Biscuit    41.9  -40.2%   Biscuit     41.9   -40.2%
+        भारत         Bangalore  芯芯片片    52.2    6.4%   芯芯片片     52.2     6.4%
+    
+    In the above dataframe product, sales, growth column data is repeated. 
+    Return Duplicate column names as output
+
+    Output:
+        dups = ['sales', 'product', 'growth']
     '''
     groups = data.columns.to_series().groupby(data.dtypes).groups
     dups = []

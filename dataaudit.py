@@ -1,5 +1,6 @@
 import os
 import six
+import itertools
 import pandas as pd
 
 
@@ -121,13 +122,25 @@ def count_outliers_typed(series, low=None, high=None, max=0):
             'high': high,
         }
 
+def missing_patterns(data):
+    '''
+    '''
+    md_pattern = {}
+    missing_cols = data.columns[pd.isnull(data).sum()>0]
+    for comb in range(len(missing_cols), 0, -1):
+        for i in itertools.combinations(missing_cols, comb):
+            cols = list(i)
+            non_nulls = data[cols].dropna(how='all')
+            if(non_nulls.shape[0] < data.shape[0]):
+                md_pattern[i] = data.shape[0] - non_nulls.shape[0]
+                data = data.loc[non_nulls.index]
+    return {
+            'code': 'missing-patterns',
+            'message': '',
+            'md_pattern': md_pattern
+    }
 
-def count_categorical_outliers_typed(series):
-    '''
-    Given a numerical series, counts number of outliers
-    '''
-    freqs = series.value_counts()
-    return count_outliers_typed(freqs, high=freqs.max())
+
 
 
 
@@ -143,3 +156,4 @@ registry = {
 registry['column-untyped'].append(missing_values_untyped)
 registry['data-untyped'].append(duplicate_rows_untyped)
 registry['column-typed'].append(count_outliers_typed)
+registry['missing-patterns'].append(missing_patterns)

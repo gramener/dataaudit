@@ -162,9 +162,7 @@ def duplicate_column_headers(header_row):
     '''
     Read given file based on file_extension and return duplicate count.
     '''
-    header_dict = {i: header_row.count(i) for i in header_row}
-    duplic_arr = [key for key, value in header_dict.items() if value > 1]
-    return duplic_arr
+    return list(set(x for x in header_row if header_row.count(x) > 1))
 
 
 def load_data(filepath, file_extension):
@@ -186,12 +184,9 @@ def read_csv_file(filepath):
     delimiter = ","
     with open(filepath) as csvfile:
         dialect = csv.Sniffer().sniff(csvfile.read(1024))
-        # Seek to beginning.
         csvfile.seek(0)
-        data_r = csv.reader(csvfile, dialect)
         delimiter = dialect.delimiter
-        f_data = [i for i in data_r]
-    header_row = f_data[0]
+        header_row = next(csvfile).strip('').split(delimiter)
     data = pd.read_csv(filepath, encoding='utf-8', sep=delimiter)
     return header_row, data
 

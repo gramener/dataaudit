@@ -10,9 +10,8 @@ repo = os.path.normpath(os.path.join(folder,  'testdata'))
 
 
 def test_missing_values():
-    result = dataaudit.load(os.path.join(repo, 'sales.csv'))
+    result = dataaudit.load(os.path.join(repo, 'sales.csv'),  file_extension='csv')
     errors = dataaudit.check(result['data'])
-
     assert errors[0]['code'] == 'missing-value'
     assert 'sales' in errors[0]['message']
 
@@ -23,14 +22,17 @@ def test_missing_values():
 def test_mutiple_columns():
     filename = os.path.join(repo, 'sales.csv')
     log_file = os.path.join(repo, 'log.log')
-    header_row, data = dataaudit.load_data(filename, 'csv')
+    result = dataaudit.load(os.path.join(repo, 'sales.csv'),  file_extension='csv')
+    header_row = result.get('header_row', [])
+    data = result.get('data', [])
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     logging.basicConfig(filename=log_file, filemode='w')
     logging.info(dataaudit.duplicate_columns_name(header_row))
     logging.info(dataaudit.duplicate_columns_untyped(data))
-    filename = os.path.join(repo, 'sales.xlsx')
-    header_row, data = dataaudit.load_data(filename, 'excel')
+    result = dataaudit.load(os.path.join(repo, 'sales.xlsx'),  file_extension='excel')
+    header_row = result.get('header_row', [])
+    data = result.get('data', [])
     logging.info(dataaudit.duplicate_columns_name(header_row))
     logging.info(dataaudit.duplicate_columns_untyped(data))
 

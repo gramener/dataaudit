@@ -279,5 +279,5 @@ registry = {
 registry['column-untyped'].append(missing_values_untyped)
 registry['data-untyped'].append(duplicate_rows_untyped)
 registry['data-untyped'].append(duplicate_columns_untyped)
-# registry['column-typed'].append(count_outliers_typed)
-# registry['nulls-patterns'].append(nulls_patterns)
+registry['column-typed'].append(count_outliers_typed)
+registry['nulls-patterns'].append(nulls_patterns)

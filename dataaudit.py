@@ -177,7 +177,7 @@ def print_test(test_output):
         print(test_output['message'])
 
 
-def main(path):
+def run_audits(path):
     # Check this function with Anand
     # How should we print results
     # Hence not optimizing
@@ -201,12 +201,12 @@ def main(path):
     except (FileNotFoundError, pd.errors.ParserError) as e:
         print (e)
         print('Problem loading the data. Pass the correct CSV file wit correct path')
-    return registry
+    return 'Audits sucessfully done'
 if __name__ == "__main__":
     
     args = sys.argv
     if len(args) > 1:
         path = sys.argv[1]
-        main(path)
+        run_audits(path)
     else:
         print('No file path passed. Pass one')

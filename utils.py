@@ -94,5 +94,5 @@ def types(data):
     typ['numbers'] = get_numeric_cols(data)
     typ['groups'] = list(set(data.columns) - set(typ['numbers']))
     typ['dates'] = [col for col in data.columns if is_date(data[col])]
-    typ['keywords'] = [col for col in data.columns if has_keywords(data[col])]
+    typ['keywords'] = [col for col in typ['groups'] if has_keywords(data[col])]
     return typ

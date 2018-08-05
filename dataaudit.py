@@ -1,5 +1,7 @@
+
 import os
 import six
+import sys
 import itertools
 import pandas as pd
 
@@ -135,11 +137,12 @@ def nulls_patterns(data):
             if(non_nulls.shape[0] < data.shape[0]):
                 nulls_pattern[i] = data.shape[0] - non_nulls.shape[0]
                 data = data.loc[non_nulls.index]
-    return {
-            'code': 'missing-patterns',
-            'message': '',
-            'md_pattern': nulls_pattern
-    }
+    if len(nulls_pattern)>1:
+        return {
+                'code': 'missing-patterns',
+                'message': 'missing patterns found',
+                'md_pattern': nulls_pattern
+        }
 
 
 def count_categorical_outliers(series):
@@ -167,4 +170,43 @@ registry = {
 registry['column-untyped'].append(missing_values_untyped)
 registry['data-untyped'].append(duplicate_rows_untyped)
 registry['column-typed'].append(count_outliers_typed)
-registry['nulls-patterns'].append(nulls_patterns)
+registry['data-untyped'].append(nulls_patterns)
+
+def print_test(test_output):
+    if test_output != None:
+        print(test_output['message'])
+
+
+def main(path):
+    # Check this function with Anand
+    # How should we print results
+    # Hence not optimizing
+    try:
+        print(path)
+        data = pd.read_csv(path)
+        print ('========Data Untyped==============')
+        for method in registry['data-untyped']:
+            test_data = method(data)
+            print_test(test_data)
+        print ('========Column Untyped============')
+        for method in registry['column-untyped']:
+            for col in data.columns:
+                col_test = method(data[col])
+                print_test(col_test)
+        print ('=======Column Typed=================')
+        for method in registry['column-typed']:
+            for col in data.columns:
+                col_test = method(data[col])
+                print_test(col_test)
+    except (FileNotFoundError, pd.errors.ParserError) as e:
+        print (e)
+        print('Problem loading the data. Pass the correct CSV file wit correct path')
+    return registry
+if __name__ == "__main__":
+    
+    args = sys.argv
+    if len(args) > 1:
+        path = sys.argv[1]
+        main(path)
+    else:
+        print('No file path passed. Pass one')

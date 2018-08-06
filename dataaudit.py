@@ -305,6 +305,14 @@ def check_primary_key_unique(data):
         }
 
 
+def check_prefix_expression(data):
+    '''
+    Given dataframe check prefix for number columns.
+    '''
+    for column in data:
+        s_data = data[column]
+
+
 registry = {
     'file': [],             # List of file-level checks
                             # <STRUCTURE INFERENCE> happens here

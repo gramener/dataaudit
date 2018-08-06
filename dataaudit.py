@@ -110,7 +110,7 @@ def duplicate_columns_untyped(data):
     To check duplicate data within multiple columns which is having
     different column name or same column name.'''
     count_duplicates = len(duplicate_datacolumns(data))
-    if count_duplicates > 0:
+    if count_duplicates:
         return {
             'code': 'duplicate_columns_untyped',
             'message': '{:.0f} duplicate columns'.format(count_duplicates),
@@ -265,6 +265,44 @@ def duplicate_datacolumns(data):
                     dups.append(cs[i])
                     break
     return dups
+
+
+def check_order_id_continous(data):
+    '''
+    Given a dataframe identify continous order id.
+    '''
+    order_id_continous_columns = []
+    for column in data:
+        s_data = data[column]
+        if s_data.dtypes == np.float64 or s_data.dtypes == np.int64:
+            s_data.fillna(0, inplace=True)
+            s_data_diff = s_data.diff().reset_index(drop=True)
+            if len(s_data_diff.unique()) == 2:
+                order_id_continous_columns.append(column)
+    if len(order_id_continous_columns) > 0:
+        return {
+            'code': 'check_order_id_continous',
+            'message': '{:.0f} continous columns'.format(len(order_id_continous_columns)),
+            'order_id_continous': order_id_continous_columns,
+        }
+
+
+def check_primary_key_unique(data):
+    '''
+    Given dataframe check primekey unique.
+    '''
+    primary_key_unique_columns = []
+    for column in data:
+        s_data = data[column]
+        if not (s_data.isnull().values.any()):
+            if len(s_data) == len(s_data.unique()):
+                primary_key_unique_columns.append(column)
+    if len(primary_key_unique_columns) > 0:
+        return {
+            'code': 'check_primary_key_unique',
+            'message': '{:.0f} primary columns'.format(len(primary_key_unique_columns)),
+            'primary_key_unique_columns': primary_key_unique_columns,
+        }
 
 
 registry = {

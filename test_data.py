@@ -30,6 +30,8 @@ def test_mutiple_columns():
     logging.basicConfig(filename=log_file, filemode='w')
     logging.info(dataaudit.duplicate_columns_name(header_row))
     logging.info(dataaudit.duplicate_columns_untyped(data))
+    logging.info(dataaudit.check_order_id_continous(data))
+    logging.info(dataaudit.check_primary_key_unique(data))
     result = dataaudit.load(os.path.join(repo, 'sales.xlsx'),  file_extension='excel')
     header_row = result.get('header_row', [])
     data = result.get('data', [])

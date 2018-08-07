@@ -1,5 +1,4 @@
 
-import os
 import six
 import sys
 import itertools
@@ -96,12 +95,14 @@ def check_numeric(series):
     pass
 
 
-def count_outliers_typed(series, low=None, high=None, max=0):
+def count_numeric_outliers(series, low=None, high=None, max=0):
     '''Given a numerical series, counts number of outliers
     - If low is not specified, 2 percentile is taken
     - If high is not specified, 98 percentile is taken
 
     '''
+    if series._get_numeric_data().shape[0] == 0:
+        return None
     q1 = series.quantile(0.25)
     q3 = series.quantile(0.75)
     iqr = q3 - q1
@@ -115,7 +116,8 @@ def count_outliers_typed(series, low=None, high=None, max=0):
     if outliers > max:
         return {
             'code': 'count_outliers_typed',
-            'message': '{}: {:.0f} outlier values'.format(series.name, outliers),
+            'message': 'Outliers count in {} column(numeric): \
+            {:.0f}'.format(series.name, outliers),
             'series': series.name,
             'outliers': outliers,
             'lower_outliers': lower_outliers,
@@ -129,7 +131,7 @@ def nulls_patterns(data):
     '''
     '''
     nulls_pattern = {}
-    missing_cols = data.columns[pd.isnull(data).sum()>0]
+    missing_cols = data.columns[pd.isnull(data).sum() > 0]
     for comb in range(len(missing_cols), 0, -1):
         for i in itertools.combinations(missing_cols, comb):
             cols = list(i)
@@ -137,7 +139,7 @@ def nulls_patterns(data):
             if(non_nulls.shape[0] < data.shape[0]):
                 nulls_pattern[i] = data.shape[0] - non_nulls.shape[0]
                 data = data.loc[non_nulls.index]
-    if len(nulls_pattern)>1:
+    if len(nulls_pattern) > 1:
         return {
                 'code': 'missing-patterns',
                 'message': 'missing patterns found',
@@ -147,14 +149,18 @@ def nulls_patterns(data):
 
 def count_categorical_outliers(series):
     # Need to handle long tail
+    if len(series._get_numeric_data()) == 1:
+        return None
     series_freq = series.value_counts()
     steepest_slope = series_freq[series_freq.diff() / series_freq.shift(1) < -0.5]
     if len(steepest_slope):
         outliers = len(series_freq[series_freq <= steepest_slope.values[0]])
+        message = 'Outliers count in %s column(categorical): %d' % (series.name, outliers)
         return {
             'code': 'count_categorical_outliers_typed',
             'series': series.name,
             'outliers': outliers,
+            'message': message
         }
 
 
@@ -169,11 +175,13 @@ registry = {
 }
 registry['column-untyped'].append(missing_values_untyped)
 registry['data-untyped'].append(duplicate_rows_untyped)
-registry['column-typed'].append(count_outliers_typed)
+registry['column-typed'].append(count_numeric_outliers)
+registry['column-typed'].append(count_categorical_outliers)
 registry['data-untyped'].append(nulls_patterns)
 
+
 def print_test(test_output):
-    if test_output != None:
+    if test_output is not None:
         print(test_output['message'])
 
 
@@ -184,26 +192,27 @@ def run_audits(path):
     try:
         print(path)
         data = pd.read_csv(path)
-        print ('========Data Untyped==============')
+        print('========Data Untyped==============')
         for method in registry['data-untyped']:
             test_data = method(data)
             print_test(test_data)
-        print ('========Column Untyped============')
+        print('========Column Untyped============')
         for method in registry['column-untyped']:
             for col in data.columns:
                 col_test = method(data[col])
                 print_test(col_test)
-        print ('=======Column Typed=================')
+        print('=======Column Typed=================')
         for method in registry['column-typed']:
             for col in data.columns:
                 col_test = method(data[col])
                 print_test(col_test)
     except (FileNotFoundError, pd.errors.ParserError) as e:
-        print (e)
+        print(e)
         print('Problem loading the data. Pass the correct CSV file wit correct path')
     return 'Audits sucessfully done'
+
+
 if __name__ == "__main__":
-    
     args = sys.argv
     if len(args) > 1:
         path = sys.argv[1]

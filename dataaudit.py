@@ -52,16 +52,15 @@ def report(errors, result, **kwargs):
 def load(path_or_file, **kwargs):
     '''
     Returns a dictionary with 2 keys:
-
     - ``data``: a Pandas DataFrame with the contents of the file. ``None`` if
       the file could not be loaded
     - ``error``: a list of file format or column types data errors
     '''
-    file_extension = kwargs.get('file_extension', '')
+    file_extension = kwargs.get('file_extension', 'csv')
     if file_extension == 'csv':
-        header_row, data = read_csv_file(path_or_file)
+        header_row, data = read_csv(path_or_file)
     elif file_extension == 'excel':
-        header_row, data = read_excel_file(path_or_file)
+        header_row, data = read_xlsx(path_or_file)
     return {'header_row': header_row, 'data': data}
 
 
@@ -197,7 +196,7 @@ def duplicate_column_headers(header_row):
     return list(set(x for x in header_row if header_row.count(x) > 1))
 
 
-def read_csv_file(filepath):
+def read_csv(filepath):
     '''
     Read given CSV file.
     '''
@@ -213,7 +212,7 @@ def read_csv_file(filepath):
 
 
 
-def read_excel_file(filepath):
+def read_xlsx(filepath):
     '''
     Read Given excel file.
     '''
@@ -327,7 +326,10 @@ registry = {
 }
 registry['column-untyped'].append(missing_values_untyped)
 registry['data-untyped'].append(duplicate_rows_untyped)
+# registry['data-untyped'].append(duplicate_columns_name)
 registry['data-untyped'].append(duplicate_columns_untyped)
+registry['data-untyped'].append(check_order_id_continous)
+registry['data-untyped'].append(check_primary_key_unique)
 registry['column-typed'].append(count_outliers_typed)
 registry['data-untyped'].append(nulls_patterns)
 
@@ -342,7 +344,8 @@ def run_audits(path):
     # Hence not optimizing
     try:
         print(path)
-        data = pd.read_csv(path)
+        # data = pd.read_csv(path)
+        header_row, data = read_csv(path)
         print ('========Data Untyped==============')
         for method in registry['data-untyped']:
             test_data = method(data)

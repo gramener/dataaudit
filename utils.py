@@ -168,7 +168,7 @@ def check_numeric(series):
     pass
 
 
-def count_numeric_outliers(series, low=None, high=None, max=0):
+def count_numeric_outliers(series, meta, low=None, high=None, max=0):
     '''Given a numerical series, counts number of outliers
     - If low is not specified, 2 percentile is taken
     - If high is not specified, 98 percentile is taken
@@ -189,7 +189,7 @@ def count_numeric_outliers(series, low=None, high=None, max=0):
     if outliers > max:
         return {
             'code': 'count_outliers_typed',
-            'message': 'Outliers count in {} column(numeric): \
+            'message': '{}(numeric) |  \
             {:.0f}'.format(series.name, outliers),
             'series': series.name,
             'outliers': outliers,
@@ -200,7 +200,7 @@ def count_numeric_outliers(series, low=None, high=None, max=0):
         }
 
 
-def nulls_patterns(data):
+def nulls_patterns(data, meta):
     '''
     '''
     nulls_pattern = {}
@@ -220,7 +220,7 @@ def nulls_patterns(data):
         }
 
 
-def count_categorical_outliers(series):
+def count_categorical_outliers(series, meta):
     # Need to handle long tail
     if len(series._get_numeric_data()) == 1:
         return None
@@ -228,7 +228,7 @@ def count_categorical_outliers(series):
     steepest_slope = series_freq[series_freq.diff() / series_freq.shift(1) < -0.5]
     if len(steepest_slope):
         outliers = len(series_freq[series_freq <= steepest_slope.values[0]])
-        message = 'Outliers count in %s column(categorical): %d' % (series.name, outliers)
+        message = '%s(categorical) | %d' % (series.name, outliers)
         return {
             'code': 'count_categorical_outliers_typed',
             'series': series.name,
@@ -246,3 +246,37 @@ def load(path_or_file, **kwargs):
     - ``error``: a list of file format or column types data errors
     '''
     pass
+
+
+def duplicate_columns_name(data, meta):
+    '''
+    Function to count duplicate columns names.
+    '''
+    header_row = meta['header']
+    duplicates = list(set(x for x in header_row if header_row.count(x) > 1))
+    count_duplicates = len(duplicates)
+    if count_duplicates > 0:
+        return {
+            'code': 'duplicate_column_headers_untyped',
+            'message': '{:.0f}'.format(count_duplicates),
+            'duplicates': count_duplicates,
+        }
+
+
+def check_order_id_continuous(data, meta):
+    '''
+    Given a dataframe identify continuous order id.
+    '''
+    order_id_continuous_columns = []
+    for column in data._get_numeric_data():
+        s_data = data[column]
+        if not (s_data.isnull().values.any()):
+            s_data_diff = s_data.diff().reset_index(drop=True)
+            if len(s_data_diff.unique()) == 2:
+                order_id_continuous_columns.append(column)
+    if len(order_id_continuous_columns) > 0:
+        return {
+            'code': 'check_order_id_continuous',
+            'message': '{:.0f} continuous columns'.format(len(order_id_continuous_columns)),
+            'order_id_continuous': order_id_continuous_columns,
+        }

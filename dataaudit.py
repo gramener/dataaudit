@@ -1,7 +1,6 @@
 
 import six
 import sys
-import itertools
 import utils
 import pandas as pd
 
@@ -13,6 +12,10 @@ def is_a_file(source, meta={}):
     meta['header'] = header
     meta['types'] = utils.types(data)
     return data, meta, errors
+
+
+def is_a_database(source):
+    return False
 
 
 def check(source, **kwargs):
@@ -68,14 +71,16 @@ registry = {
 }
 
 
-registry['column-untyped'].append(utils.missing_values_untyped)
-registry['data-untyped'].append(utils.duplicate_rows_untyped)
-'''
-registry['column-typed'].append(count_numeric_outliers)
-registry['column-typed'].append(count_categorical_outliers)
-registry['data-untyped'].append(nulls_patterns)
-'''
-
+registry['column-untyped'].extend([
+    utils.missing_values_untyped])
+registry['data-untyped'].extend([
+    utils.duplicate_rows_untyped,
+    utils.duplicate_columns_name,
+    utils.nulls_patterns,
+    utils.check_order_id_continuous])
+registry['column-typed'].extend([
+    utils.count_numeric_outliers,
+    utils.count_categorical_outliers])
 
 if __name__ == "__main__":
     args = sys.argv

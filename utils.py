@@ -96,3 +96,12 @@ def types(data):
     typ['dates'] = [col for col in data.columns if is_date(data[col])]
     typ['keywords'] = [col for col in typ['groups'] if has_keywords(data[col])]
     return typ
+
+
+def check_prefix_expression(data):
+    '''
+    Given dataframe check prefix for number columns.
+    '''
+    for column in data:
+        s_data = data[column]
+        

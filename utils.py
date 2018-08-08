@@ -347,12 +347,7 @@ def check_primary_key_unique(data, meta):
     '''
     Given dataframe check primekey unique.
     '''
-    primary_key_unique_columns = []
-    for column in data:
-        s_data = data[column]
-        if not (s_data.isnull().values.any()):
-            if len(s_data) == len(s_data.unique()):
-                primary_key_unique_columns.append(column)
+    primary_key_unique_columns = [c for c in data if data[c].is_unique]
     primary_columns_len = len(primary_key_unique_columns)
     if primary_columns_len > 0:
         return {

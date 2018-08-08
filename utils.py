@@ -102,6 +102,8 @@ def check_prefix_expression(data):
     '''
     Given dataframe check prefix for number columns.
     '''
-    for column in data:
+    for column in data.select_dtypes(exclude=['int', 'int64', 'float64', 'bool']):
         s_data = data[column]
-        
+        ext_values = s_data.str.extract(r"^\D-{0,1}\d+\.{0,1}\d+$")
+        print(ext_values)
+        # print(column, ext_values[0].values.tolist())

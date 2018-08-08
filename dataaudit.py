@@ -99,7 +99,8 @@ def duplicate_columns_name(data):
     '''
     Function to count duplicate columns names.'''
     header_row = dataaudit_dict['csv_headers']
-    count_duplicates = len(duplicate_column_headers(header_row))
+    duplicates = list(set(x for x in header_row if header_row.count(x) > 1))
+    count_duplicates = len(duplicates)
     if count_duplicates > 0:
         return {
             'code': 'duplicate_column_headers',
@@ -197,12 +198,6 @@ def count_categorical_outliers(series):
             'outliers': outliers,
             'message': message
         }
-
-def duplicate_column_headers(header_row):
-    '''
-    Read given file based on file_extension and return duplicate count.
-    '''
-    return list(set(x for x in header_row if header_row.count(x) > 1))
 
 
 def read_csv(filepath):
@@ -363,6 +358,8 @@ def run_audits(path):
             for col in data.columns:
                 col_test = method(data[col])
                 print_test(col_test)
+        import utils
+        utils.check_prefix_expression(data)
     except (FileNotFoundError, pd.errors.ParserError) as e:
         print(e)
         print('Problem loading the data. Pass the correct CSV file wit correct path')

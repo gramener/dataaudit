@@ -287,7 +287,7 @@ def check_order_id_continuous(data, meta):
         s_data = data[column]
         if not (s_data.isnull().values.any()):
             s_data_diff = s_data.diff().reset_index(drop=True)
-            if len(s_data_diff.unique()) == 2:
+            if s_data_diff.nunique() == 1:
                 order_id_continuous_columns.append(column)
     order_columns_len = len(order_id_continuous_columns)
     if order_columns_len > 0:
@@ -355,14 +355,3 @@ def check_primary_key_unique(data, meta):
             'message': '{} | {:.0f}'.format(','.join(primary_key_unique_columns), primary_columns_len),
             'primary_key_unique_columns': primary_key_unique_columns,
         }
-
-
-def check_prefix_expression(data):
-    '''
-    Given dataframe check prefix for number columns.
-    '''
-    for column in data.select_dtypes(exclude=['int', 'int64', 'float64', 'bool']):
-        s_data = data[column]
-        ext_values = s_data.str.extract(r"^\D-{0,1}\d+\.{0,1}\d+$")
-        print(ext_values)
-        # print(column, ext_values[0].values.tolist())

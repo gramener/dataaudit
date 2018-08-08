@@ -7,7 +7,7 @@ import itertools
 import dateutil
 import datetime
 import pandas as pd
-import numpy as np
+
 
 def is_date(series):
     '''
@@ -169,7 +169,10 @@ def duplicate_columns_untyped(data, meta):
     if count_duplicates:
         return {
             'code': 'duplicate_columns_untyped',
-            'message': '{} | {:.0f}'.format(','.join(duplicate_columns), count_duplicates),
+            'message': '{} | {:.0f}'.format(
+                ','.join(['({},{})'.format(
+                    sub_lst[0], sub_lst[1]) for sub_lst in duplicate_columns]),
+                count_duplicates),
             'duplicates': count_duplicates,
         }
 
@@ -315,31 +318,13 @@ def duplicate_datacolumns(data):
     Output:
         dups = ['sales', 'product', 'growth']
     '''
-    groups = data.columns.to_series().groupby(data.dtypes).groups
     dups = []
-    for t, v in groups.items():
-        cs = data[v].columns
-        vs = data[v]
-        lcs = len(cs)
-        for i in range(lcs):
-            for j in range(i+1, lcs):
-                fill_na_flag = False
-                if t == np.float64 or t == np.int64:
-                    iv_nan= vs.iloc[:,i].index[vs.iloc[:,i].apply(np.isnan)].values.tolist()
-                    jv_nan= vs.iloc[:,j].index[vs.iloc[:,j].apply(np.isnan)].values.tolist()
-                    if np.array_equiv(iv_nan, jv_nan):
-                        fill_na_flag = True
-                if fill_na_flag:
-                    iv_series = vs.iloc[:,i].fillna(0)
-                    jv_series = vs.iloc[:,j].fillna(0)
-                else:
-                    iv_series = vs.iloc[:,i]
-                    jv_series = vs.iloc[:,j]
-                iv = iv_series.tolist()
-                jv = jv_series.tolist()
-                if np.array_equiv(iv, jv):
-                    dups.append(cs[i])
-                    break
+    for i, ac in enumerate(data):
+        for j, bc in enumerate(data):
+            if i >= j:
+                continue
+            if data[ac].equals(data[bc]):
+                dups.append([ac, bc])
     return dups
 
 
@@ -355,3 +340,14 @@ def check_primary_key_unique(data, meta):
             'message': '{} | {:.0f}'.format(','.join(primary_key_unique_columns), primary_columns_len),
             'primary_key_unique_columns': primary_key_unique_columns,
         }
+
+
+def check_prefix_expression(data):
+    '''
+    Given dataframe check prefix for number columns.
+    '''
+    for column in data.select_dtypes(exclude=['int', 'int64', 'float64', 'bool']):
+        s_data = data[column]
+        ext_values = s_data.str.extract(r"^\D-{0,1}\d+\.{0,1}\d+$")
+        print(ext_values)
+        # print(column, ext_values[0].values.tolist())

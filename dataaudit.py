@@ -73,7 +73,8 @@ registry = {
 
 
 registry['column-untyped'].extend([
-    utils.missing_values_untyped])
+    utils.missing_values_untyped,
+    utils.check_char_len])
 registry['data-untyped'].extend([
     utils.duplicate_rows_untyped,
     utils.duplicate_columns_name,

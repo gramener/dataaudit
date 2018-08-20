@@ -3,9 +3,10 @@ import six
 import csv
 import xlrd
 import sys
-import itertools
+import chardet
 import dateutil
 import datetime
+import itertools
 import pandas as pd
 
 
@@ -110,12 +111,21 @@ def read_csv(filepath):
     Read given CSV file.
     '''
     delimiter = ","
+    header_row = []
+    encoding_str = 'utf-8'
+    rawdata = open(filepath, 'rb').read()
+    encoding_dict = chardet.detect(rawdata)
+    if encoding_dict['confidence'] > 0.8:
+        encoding_str = encoding_dict.get('encoding', encoding_str)
     with open(filepath) as csvfile:
-        dialect = csv.Sniffer().sniff(csvfile.read(1024))
-        csvfile.seek(0)
-        delimiter = dialect.delimiter
-        header_row = next(csvfile).strip('\n').split(delimiter)
-    data = pd.read_csv(filepath, encoding='utf-8', sep=delimiter)
+        try:
+            dialect = csv.Sniffer().sniff(csvfile.read(1024))
+            csvfile.seek(0)
+            delimiter = dialect.delimiter
+            header_row = next(csvfile).strip('\n').split(delimiter)
+        except Exception as ex:
+            print(ex)
+    data = pd.read_csv(filepath, encoding=encoding_str, sep=delimiter)
     return header_row, data
 
 

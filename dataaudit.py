@@ -3,7 +3,6 @@ import six
 import sys
 import utils
 import pandas as pd
-import numpy as np
 
 
 def is_a_file(source, meta={}):
@@ -84,7 +83,8 @@ registry['data-untyped'].extend([
     utils.check_primary_key_unique])
 registry['column-typed'].extend([
     utils.count_numeric_outliers,
-    utils.count_categorical_outliers])
+    utils.count_categorical_outliers,
+    utils.check_valid_dates])
 
 if __name__ == "__main__":
     args = sys.argv

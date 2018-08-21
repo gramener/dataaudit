@@ -1,8 +1,6 @@
-import os
 import six
 import csv
 import xlrd
-import sys
 import chardet
 import dateutil
 import datetime
@@ -306,7 +304,8 @@ def check_order_id_continuous(data, meta):
     if order_columns_len > 0:
         return {
             'code': 'check_order_id_continuous',
-            'message': '{} | {:.0f}'.format(','.join(order_id_continuous_columns), order_columns_len),
+            'message': '{} | {:.0f}'.format(','.join(order_id_continuous_columns),
+                                            order_columns_len),
             'order_id_continuous': order_id_continuous_columns,
         }
 
@@ -322,8 +321,8 @@ def duplicate_datacolumns(data):
         भारत         Hyderabad     Eggs   513.7  -11.3%      Eggs    513.7   -11.3%
         भारत         Bangalore  Biscuit    41.9  -40.2%   Biscuit     41.9   -40.2%
         भारत         Bangalore  芯芯片片    52.2    6.4%   芯芯片片     52.2     6.4%
-    
-    In the above dataframe product, sales, growth column data is repeated. 
+
+    In the above dataframe product, sales, growth column data is repeated.
     Return Duplicate column names as output
     Output:
         dups = ['sales', 'product', 'growth']
@@ -347,7 +346,8 @@ def check_primary_key_unique(data, meta):
     if primary_columns_len > 0:
         return {
             'code': 'check_primary_key_unique',
-            'message': '{} | {:.0f}'.format(','.join(primary_key_unique_columns), primary_columns_len),
+            'message': '{} | {:.0f}'.format(','.join(primary_key_unique_columns),
+                                            primary_columns_len),
             'primary_key_unique_columns': primary_key_unique_columns,
         }
 
@@ -357,7 +357,7 @@ def check_char_len(series, meta, max=50):
     if series.name in meta['types']['numbers']:
         return
     row_numbers = []
-    row_numbers = list(series[series.str.len()>max].index)
+    row_numbers = list(series[series.str.len() > max].index)
     if len(row_numbers) > 0:
         return {
             'code': 'Character length exceeding 50',
@@ -372,8 +372,37 @@ def check_prefix_expression(data, meta):
     '''
     Given dataframe check prefix for number columns.
     '''
+    '''
+    # Commenting to pass flake8
     for column in data.select_dtypes(exclude=['int', 'int64', 'float64', 'bool']):
         s_data = data[column]
         ext_values = s_data.str.extract(r"^\D-{0,1}\d+\.{0,1}\d+$")
         # print(ext_values)
         # print(column, ext_values[0].values.tolist())
+    '''
+
+
+def check_func(func, v):
+    try:
+        func(v)
+        return True
+    except ValueError:
+        return False
+
+
+def check_valid_dates(series, meta, thresh=0.7):
+    if series.name not in meta['types']['groups']:
+        return None
+    uniq = pd.Series(series.unique())
+    is_valid_dates = uniq.apply(lambda v: check_func(dateutil.parser.parse, v))
+    valid_dates = uniq[is_valid_dates[is_valid_dates].index]
+    rows_valid = series[series.isin(valid_dates)]
+    perc_rows_valid = rows_valid.shape[0] / series.shape[0]
+    mess = '{}(dates) | {:.0f}% values are valid dates'.format(
+        series.name, perc_rows_valid*100)
+    if perc_rows_valid > thresh:
+        return {
+            'code': 'identify_valid_dates',
+            'message': mess,
+            'series': series.name,
+        }

@@ -129,14 +129,18 @@ def read_csv(filepath):
     return header_row, data
 
 
-def read_xlsx(filepath):
+def read_xlsx(filepath, meta):
     '''
-    Read Given excel file.
+    Read given excel file.
     '''
+    sheet_index = 0
+    sheetname = meta['sheetname']
     wb = xlrd.open_workbook(filepath)
-    sheet = wb.sheet_by_index(0)
+    if sheetname:
+        sheet_index = wb.sheet_names().index(sheetname)
+    sheet = wb.sheet_by_index(sheet_index)
     header_row = sheet.row_values(0)
-    data = pd.read_excel(filepath, encoding='utf-8')
+    data = pd.read_excel(filepath, sheet_name=sheet_index, encoding='utf-8')
     return header_row, data
 
 
@@ -296,19 +300,23 @@ def check_order_id_continuous(data, meta):
     Given a dataframe identify continuous order id.
     '''
     order_id_continuous_columns = []
-    for column in data._get_numeric_data():
+    continous_threshold = 90
+    for column in meta['types']['numbers']:
         s_data = data[column]
         if not (s_data.isnull().values.any()):
             s_data_diff = s_data.diff().reset_index(drop=True)
-            if s_data_diff.nunique() == 1:
-                order_id_continuous_columns.append(column)
+            diff_lst = (s_data_diff.dropna().unique().tolist())
+            if len(diff_lst) > 1:
+                diff_val_series = s_data_diff.value_counts()/len(s_data_diff.dropna().index)*100
+                if diff_val_series.tolist()[0]>continous_threshold:
+                    order_id_continuous_columns.append(column)
     order_columns_len = len(order_id_continuous_columns)
     if order_columns_len > 0:
-        return {
-            'code': 'check_order_id_continuous',
-            'message': '{} | {:.0f}'.format(','.join(order_id_continuous_columns), order_columns_len),
-            'order_id_continuous': order_id_continuous_columns,
-        }
+       return {
+           'code': 'check_order_id_continuous',
+           'message': 'Missing order id values | {}'.format(','.join(order_id_continuous_columns)),
+           'order_id_continuous': order_id_continuous_columns,
+       }
 
 
 def duplicate_datacolumns(data):

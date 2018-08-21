@@ -1,15 +1,20 @@
-
+import os
 import six
 import sys
 import utils
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 def is_a_file(source, meta={}):
     errors = {}
     # First need to check if it is a file
-    header, data = utils.read_csv(source)
+    filename, file_extension = os.path.splitext(source)
+    meta['file_extension'] = file_extension
+    if file_extension == '.csv':
+        header, data = utils.read_csv(source)
+    elif file_extension == '.xlsx':
+        header, data = utils.read_xlsx(source, meta)
     meta['header'] = header
     meta['types'] = utils.types(data)
     return data, meta, errors
@@ -25,9 +30,10 @@ def check(source, **kwargs):
     '''
     errors = []
     meta = {}
+    meta['sheetname'] = kwargs['sheetname']
     # Load the data
     if isinstance(source, six.text_type):
-        if is_a_file(source):
+        if is_a_file(source, meta):
             data, meta, error = is_a_file(source, meta)
         elif is_a_database(source):
             data = pd.read_sql(source, **kwargs)
@@ -88,9 +94,12 @@ registry['column-typed'].extend([
 
 if __name__ == "__main__":
     args = sys.argv
+    sheetname = ''
     if len(args) > 1:
         path = sys.argv[1]
-        errors = check(path)
+        if len(sys.argv) >= 3:
+            sheetname = sys.argv[2]
+        errors = check(path, sheetname=sheetname)
         for error in errors:
             print(error['code'], ' | ', error['message'])
     else:

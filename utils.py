@@ -354,18 +354,16 @@ def check_primary_key_unique(data, meta):
 
 def check_char_len(series, meta, max=50):
     '''Check character length for non numeric columns.'''
-    if series.dtype in ['int', 'int64', 'float64', 'bool']:
+    if series.name in meta['types']['numbers']:
         return
-    s_data = series.str.len()
     row_numbers = []
-    for i, v in s_data.iteritems():
-        if v > max:
-            row_numbers.append('{}'.format(i))
+    row_numbers = list(series[series.str.len()>max].index)
     if len(row_numbers) > 0:
         return {
             'code': 'Character length exceeding 50',
             'message': 'Column {} | Rows {}'.format(
-                series.name, ','.join(row_numbers)),
+                series.name, ','.join([
+                    '{}'.format(x) for x in row_numbers])),
             'series': series.name
         }
 

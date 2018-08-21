@@ -406,3 +406,19 @@ def check_valid_dates(series, meta, thresh=0.7):
             'message': mess,
             'series': series.name,
         }
+
+
+def check_negative_numbers(series, meta, thresh=0.02):
+    '''
+    Function to check if there is any small percentage of negative numbers
+    '''
+    if series.name not in meta['types']['numbers']:
+        return None
+    neg_nums_count = (series < 0).sum()
+    perc_negs = neg_nums_count / series.shape[0]
+    if perc_negs < thresh and neg_nums_count != 0:
+        return {
+            'code': 'negative_values_typed',
+            'message': '{} | {:.0f} values are negative'.format(series.name, neg_nums_count),
+            'series': series.name
+        }

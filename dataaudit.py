@@ -85,7 +85,8 @@ registry['column-typed'].extend([
     utils.count_numeric_outliers,
     utils.count_categorical_outliers,
     utils.check_valid_dates,
-    utils.check_negative_numbers])
+    utils.check_negative_numbers,
+    utils.check_groups_typos])
 
 if __name__ == "__main__":
     args = sys.argv

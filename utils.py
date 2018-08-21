@@ -6,6 +6,8 @@ import dateutil
 import datetime
 import itertools
 import pandas as pd
+from nltk.metrics import edit_distance
+from itertools import combinations
 
 
 def is_date(series):
@@ -421,4 +423,28 @@ def check_negative_numbers(series, meta, thresh=0.02):
             'code': 'negative_values_typed',
             'message': '{} | {:.0f} values are negative'.format(series.name, neg_nums_count),
             'series': series.name
+        }
+
+
+def check_groups_typos(series, meta, thresh=0.02, max_dis=3):
+    groups = meta['types']['groups']
+    exclusion = meta['types']['dates']
+    exclusion.extend(meta['types']['keywords'])
+    if series.name not in groups or series.name in exclusion:
+        return None
+    freqs = series.value_counts()
+    freqs = freqs[(pd.Series(freqs.index).str.len() > 5).values]
+    if freqs.shape[0] == 0:
+        return None
+    typos = []
+    for w1, w2 in combinations(freqs.index, r=2):
+        ed = edit_distance(w1, w2)
+        if ed < max_dis:
+            typos.append((w1, w2))
+    if len(typos):
+        return {
+            'code': 'typo_values_typed',
+            'message': '{} | {:.0f} typos present'.format(series.name, len(typos)),
+            'series': series.name,
+            'typos': typos
         }

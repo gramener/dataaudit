@@ -1,13 +1,13 @@
-import os
 import six
 import csv
 import xlrd
-import sys
 import chardet
 import dateutil
 import datetime
 import itertools
 import pandas as pd
+from nltk.metrics import edit_distance
+from itertools import combinations
 
 
 def is_date(series):
@@ -308,7 +308,7 @@ def check_order_id_continuous(data, meta):
             diff_lst = (s_data_diff.dropna().unique().tolist())
             if len(diff_lst) > 1:
                 diff_val_series = s_data_diff.value_counts()/len(s_data_diff.dropna().index)*100
-                if diff_val_series.tolist()[0]>continous_threshold:
+                if diff_val_series.tolist()[0] > continous_threshold:
                     order_id_continuous_columns.append(column)
     order_columns_len = len(order_id_continuous_columns)
     if order_columns_len > 0:
@@ -330,8 +330,8 @@ def duplicate_datacolumns(data):
         भारत         Hyderabad     Eggs   513.7  -11.3%      Eggs    513.7   -11.3%
         भारत         Bangalore  Biscuit    41.9  -40.2%   Biscuit     41.9   -40.2%
         भारत         Bangalore  芯芯片片    52.2    6.4%   芯芯片片     52.2     6.4%
-    
-    In the above dataframe product, sales, growth column data is repeated. 
+
+    In the above dataframe product, sales, growth column data is repeated.
     Return Duplicate column names as output
     Output:
         dups = ['sales', 'product', 'growth']
@@ -355,7 +355,8 @@ def check_primary_key_unique(data, meta):
     if primary_columns_len > 0:
         return {
             'code': 'check_primary_key_unique',
-            'message': '{} | {:.0f}'.format(','.join(primary_key_unique_columns), primary_columns_len),
+            'message': '{} | {:.0f}'.format(','.join(primary_key_unique_columns),
+                                            primary_columns_len),
             'primary_key_unique_columns': primary_key_unique_columns,
         }
 
@@ -365,7 +366,7 @@ def check_char_len(series, meta, max=50):
     if series.name in meta['types']['numbers']:
         return
     row_numbers = []
-    row_numbers = list(series[series.str.len()>max].index)
+    row_numbers = list(series[series.str.len() > max].index)
     if len(row_numbers) > 0:
         return {
             'code': 'Character length exceeding 50',
@@ -380,8 +381,77 @@ def check_prefix_expression(data, meta):
     '''
     Given dataframe check prefix for number columns.
     '''
+    '''
+    # Commenting to pass flake8
     for column in data.select_dtypes(exclude=['int', 'int64', 'float64', 'bool']):
         s_data = data[column]
         ext_values = s_data.str.extract(r"^\D-{0,1}\d+\.{0,1}\d+$")
         # print(ext_values)
         # print(column, ext_values[0].values.tolist())
+    '''
+
+
+def check_func(func, v):
+    try:
+        func(v)
+        return True
+    except ValueError:
+        return False
+
+
+def check_valid_dates(series, meta, thresh=0.7):
+    if series.name not in meta['types']['groups']:
+        return None
+    uniq = pd.Series(series.unique())
+    is_valid_dates = uniq.apply(lambda v: check_func(dateutil.parser.parse, v))
+    valid_dates = uniq[is_valid_dates[is_valid_dates].index]
+    rows_valid = series[series.isin(valid_dates)]
+    perc_rows_valid = rows_valid.shape[0] / series.shape[0]
+    mess = '{}(dates) | {:.0f}% values are valid dates'.format(
+        series.name, perc_rows_valid*100)
+    if perc_rows_valid > thresh:
+        return {
+            'code': 'identify_valid_dates',
+            'message': mess,
+            'series': series.name,
+        }
+
+
+def check_negative_numbers(series, meta, thresh=0.02):
+    '''
+    Function to check if there is any small percentage of negative numbers
+    '''
+    if series.name not in meta['types']['numbers']:
+        return None
+    neg_nums_count = (series < 0).sum()
+    perc_negs = neg_nums_count / series.shape[0]
+    if perc_negs < thresh and neg_nums_count != 0:
+        return {
+            'code': 'negative_values_typed',
+            'message': '{} | {:.0f} values are negative'.format(series.name, neg_nums_count),
+            'series': series.name
+        }
+
+
+def check_groups_typos(series, meta, thresh=0.02, max_dis=3):
+    groups = meta['types']['groups']
+    exclusion = meta['types']['dates']
+    exclusion.extend(meta['types']['keywords'])
+    if series.name not in groups or series.name in exclusion:
+        return None
+    freqs = series.value_counts()
+    freqs = freqs[(pd.Series(freqs.index).str.len() > 5).values]
+    if freqs.shape[0] == 0:
+        return None
+    typos = []
+    for w1, w2 in combinations(freqs.index, r=2):
+        ed = edit_distance(w1, w2)
+        if ed < max_dis:
+            typos.append((w1, w2))
+    if len(typos):
+        return {
+            'code': 'typo_values_typed',
+            'message': '{} | {:.0f} typos present'.format(series.name, len(typos)),
+            'series': series.name,
+            'typos': typos
+        }

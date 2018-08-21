@@ -132,6 +132,7 @@ def read_csv(filepath):
 def read_xlsx(filepath, meta):
     '''
     Read given excel file.
+    We need to identify the encoding format currently we are using `utf-8`
     '''
     sheet_index = 0
     sheetname = meta['sheetname']

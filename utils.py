@@ -401,6 +401,7 @@ def check_func(func, v):
 
 
 def check_valid_dates(series, meta, thresh=0.7):
+    return None
     if series.name not in meta['types']['groups']:
         return None
     uniq = pd.Series(series.unique())

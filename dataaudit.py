@@ -54,7 +54,6 @@ def check(source, **kwargs):
     for method in registry['column-typed']:
         for col in data.columns:
             report(errors, method(data[col], meta), meta)
-
     return errors
 
 

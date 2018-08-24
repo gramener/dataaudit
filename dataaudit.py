@@ -10,7 +10,7 @@ def is_a_file(source, meta={}):
     # First need to check if it is a file
     filename, file_extension = os.path.splitext(source)
     meta['file_extension'] = file_extension
-    if file_extension == '.csv':
+    if file_extension in ['.csv', '.tsv']:
         header, data = utils.read_csv(source)
     elif file_extension == '.xlsx':
         header, data = utils.read_xlsx(source, meta)

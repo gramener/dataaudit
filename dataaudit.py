@@ -32,10 +32,10 @@ def check(source, **kwargs):
     meta['sheetname'] = kwargs['sheetname']
     # Load the data
     if isinstance(source, six.text_type):
-        if is_a_file(source, meta):
-            data, meta, error = is_a_file(source, meta)
-        elif is_a_database(source):
-            data = pd.read_sql(source, **kwargs)
+        # if is_a_file(source, meta):
+        data, meta, error = is_a_file(source, meta)
+        # elif is_a_database(source):
+            # data = pd.read_sql(source, **kwargs)
     elif isinstance(source, pd.DataFrame):
         data = source
     else:

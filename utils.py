@@ -205,7 +205,8 @@ def count_numeric_outliers(series, meta, low=None, high=None, max=0):
     '''Given a numerical series, counts number of outliers
     - If low is not specified, 2 percentile is taken
     - If high is not specified, 98 percentile is taken
-
+    refer below link
+    https://www.miniwebtool.com/outlier-calculator/
     '''
     if series._get_numeric_data().shape[0] == 0:
         return None

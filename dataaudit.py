@@ -32,10 +32,10 @@ def check(source, **kwargs):
     meta['sheetname'] = kwargs['sheetname']
     # Load the data
     if isinstance(source, six.text_type):
-        if is_a_file(source, meta):
-            data, meta, error = is_a_file(source, meta)
-        elif is_a_database(source):
-            data = pd.read_sql(source, **kwargs)
+        # if is_a_file(source, meta):
+        data, meta, error = is_a_file(source, meta)
+        # elif is_a_database(source):
+            # data = pd.read_sql(source, **kwargs)
     elif isinstance(source, pd.DataFrame):
         data = source
     else:
@@ -58,13 +58,15 @@ def check(source, **kwargs):
 
 
 def report(errors, result, meta, **kwargs):
-    if result is None:
-        return
+    # if result is None:
+    #     return
     # result.update(kwargs)
     # errors.append(result)
-    # print(result)
-    for error in result:
-        print(error['code'], ' | ', error['message'])
+    error_dict = result.result()
+    if error_dict is None:
+        return
+    errors.append(error_dict)
+    print(error_dict['code'], ' | ', error_dict['message'])
     return errors
 
 
@@ -86,16 +88,18 @@ registry['column-untyped'].extend([
 registry['data-untyped'].extend([
     utils.duplicate_rows_untyped,
     utils.duplicate_columns_name,
-    utils.duplicate_columns_untyped,
-    utils.nulls_patterns,
     utils.check_order_id_continuous,
-    utils.check_primary_key_unique])
+    utils.check_primary_key_unique,
+    utils.duplicate_columns_untyped
+    # utils.nulls_patterns
+    ])
 registry['column-typed'].extend([
     utils.count_numeric_outliers,
     utils.count_categorical_outliers,
     # utils.check_valid_dates,
     utils.check_negative_numbers,
-    utils.check_groups_typos])
+    # utils.check_groups_typos
+    ])
 
 if __name__ == "__main__":
     args = sys.argv
@@ -105,7 +109,8 @@ if __name__ == "__main__":
         if len(sys.argv) >= 3:
             sheetname = sys.argv[2]
         errors = check(path, sheetname=sheetname)
-        # for error in errors:
-        #     print(error['code'], ' | ', error['message'])
+        # for error_dict in errors:
+        #     # print(error)
+        #     print(error_dict['code'], "|", error_dict['message'])
     else:
         print('No file path passed. Pass one')

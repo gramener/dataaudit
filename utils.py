@@ -1,6 +1,7 @@
 import six
 import csv
 import xlrd
+import tornado.gen
 import chardet
 import dateutil
 import datetime
@@ -8,7 +9,6 @@ import itertools
 import pandas as pd
 from nltk.metrics import edit_distance
 from itertools import combinations
-
 
 def is_date(series):
     '''
@@ -112,7 +112,7 @@ def read_csv(filepath):
     '''
     delimiter = ","
     header_row = []
-    encoding_str = 'utf-8'
+    encoding_str = 'utf8'
     rawdata = open(filepath, 'rb').read()
     encoding_dict = chardet.detect(rawdata)
     if encoding_dict['confidence'] > 0.8:
@@ -145,7 +145,7 @@ def read_xlsx(filepath, meta):
     return header_row, data
 
 
-
+@tornado.gen.coroutine
 def missing_values_untyped(series, meta, max=0, values=['', 'NA']):
     '''
     Reports number of missing values in a series
@@ -156,7 +156,7 @@ def missing_values_untyped(series, meta, max=0, values=['', 'NA']):
     null = pd.isnull(series).sum()
     missing = null + na
     if missing > max:
-        yield {
+        return {
             'code': 'missing_value_untyped',
             'message': '{} | {:.0f}'.format(series.name, missing),
             'series': series.name,
@@ -166,16 +166,17 @@ def missing_values_untyped(series, meta, max=0, values=['', 'NA']):
         }
 
 
+@tornado.gen.coroutine
 def duplicate_rows_untyped(data, meta):
     count_duplicates = data.duplicated().sum()
     if count_duplicates > 0:
-        yield {
+        return {
             'code': 'duplicate_rows_untyped',
             'message': '{:.0f}'.format(count_duplicates),
             'duplicates': count_duplicates,
         }
 
-
+@tornado.gen.coroutine
 def duplicate_columns_untyped(data, meta):
     '''
     To check duplicate data within multiple columns which is having
@@ -183,7 +184,7 @@ def duplicate_columns_untyped(data, meta):
     duplicate_columns = duplicate_datacolumns(data)
     count_duplicates = len(duplicate_columns)
     if count_duplicates:
-        yield {
+        return {
             'code': 'duplicate_columns_untyped',
             'message': '{} | {:.0f}'.format(
                 ','.join(['({},{})'.format(
@@ -201,39 +202,40 @@ def check_numeric(series):
     '''
     pass
 
-
+@tornado.gen.coroutine
 def count_numeric_outliers(series, meta, low=None, high=None, max=0):
     '''Given a numerical series, counts number of outliers
     - If low is not specified, 2 percentile is taken
     - If high is not specified, 98 percentile is taken
-
+    refer below link
+    https://www.miniwebtool.com/outlier-calculator/
     '''
-    if not series._get_numeric_data().shape[0] == 0:
-        # yield None
-        q1 = series.quantile(0.25)
-        q3 = series.quantile(0.75)
-        iqr = q3 - q1
-        if low is None:
-            low = q1 - 1.5 * iqr
-        if high is None:
-            high = q3 + 1.5 * iqr
-        lower_outliers = series[series < low].shape[0]
-        upper_outliers = series[series > high].shape[0]
-        outliers = lower_outliers + upper_outliers
-        if outliers > max:
-            yield {
-                'code': 'count_outliers_typed',
-                'message': '{}(numeric) |  \
-                {:.0f}'.format(series.name, outliers),
-                'series': series.name,
-                'outliers': outliers,
-                'lower_outliers': lower_outliers,
-                'upper_outliers': upper_outliers,
-                'low': low,
-                'high': high,
-            }
+    if series._get_numeric_data().shape[0] == 0:
+        return None
+    q1 = series.quantile(0.25)
+    q3 = series.quantile(0.75)
+    iqr = q3 - q1
+    if low is None:
+        low = q1 - 1.5 * iqr
+    if high is None:
+        high = q3 + 1.5 * iqr
+    lower_outliers = series[series < low].shape[0]
+    upper_outliers = series[series > high].shape[0]
+    outliers = lower_outliers + upper_outliers
+    if outliers > max:
+        return {
+            'code': 'count_outliers_typed',
+            'message': '{}(numeric) |  \
+            {:.0f}'.format(series.name, outliers),
+            'series': series.name,
+            'outliers': outliers,
+            'lower_outliers': lower_outliers,
+            'upper_outliers': upper_outliers,
+            'low': low,
+            'high': high,
+        }
 
-
+@tornado.gen.coroutine
 def nulls_patterns(data, meta):
     '''
     '''
@@ -247,28 +249,28 @@ def nulls_patterns(data, meta):
                 nulls_pattern[i] = data.shape[0] - non_nulls.shape[0]
                 data = data.loc[non_nulls.index]
     if len(nulls_pattern) > 1:
-        yield {
+        return {
                 'code': 'missing-patterns',
                 'message': 'missing patterns found',
                 'md_pattern': nulls_pattern
         }
 
-
+@tornado.gen.coroutine
 def count_categorical_outliers(series, meta):
     # Need to handle long tail
-    if not len(series._get_numeric_data()) == 1:
-        # yield None
-        series_freq = series.value_counts()
-        steepest_slope = series_freq[series_freq.diff() / series_freq.shift(1) < -0.5]
-        if len(steepest_slope):
-            outliers = len(series_freq[series_freq <= steepest_slope.values[0]])
-            message = '%s(categorical) | %d' % (series.name, outliers)
-            yield {
-                'code': 'count_categorical_outliers_typed',
-                'series': series.name,
-                'outliers': outliers,
-                'message': message
-            }
+    if len(series._get_numeric_data()) == 1:
+        return None
+    series_freq = series.value_counts()
+    steepest_slope = series_freq[series_freq.diff() / series_freq.shift(1) < -0.5]
+    if len(steepest_slope):
+        outliers = len(series_freq[series_freq <= steepest_slope.values[0]])
+        message = '%s(categorical) | %d' % (series.name, outliers)
+        return {
+            'code': 'count_categorical_outliers_typed',
+            'series': series.name,
+            'outliers': outliers,
+            'message': message
+        }
 
 
 def load(path_or_file, **kwargs):
@@ -281,7 +283,7 @@ def load(path_or_file, **kwargs):
     '''
     pass
 
-
+@tornado.gen.coroutine
 def duplicate_columns_name(data, meta):
     '''
     Function to count duplicate columns names.
@@ -290,13 +292,13 @@ def duplicate_columns_name(data, meta):
     duplicates = list(set(x for x in header_row if header_row.count(x) > 1))
     count_duplicates = len(duplicates)
     if count_duplicates > 0:
-        yield {
+        return {
             'code': 'duplicate_columns_name',
             'message': '{} | {:.0f}'.format(','.join(duplicates), count_duplicates),
             'duplicates': count_duplicates,
         }
 
-
+@tornado.gen.coroutine
 def check_order_id_continuous(data, meta):
     '''
     Given a dataframe identify continuous order id.
@@ -314,12 +316,11 @@ def check_order_id_continuous(data, meta):
                     order_id_continuous_columns.append(column)
     order_columns_len = len(order_id_continuous_columns)
     if order_columns_len > 0:
-        yield {
+       return {
            'code': 'check_order_id_continuous',
            'message': 'Missing order id values | {}'.format(','.join(order_id_continuous_columns)),
            'order_id_continuous': order_id_continuous_columns,
        }
-
 
 def duplicate_datacolumns(data):
     '''
@@ -347,8 +348,7 @@ def duplicate_datacolumns(data):
                 dups.append([ac, bc])
     return dups
 
-
-
+@tornado.gen.coroutine
 def check_primary_key_unique(data, meta):
     '''
     Given dataframe check primekey unique.
@@ -356,28 +356,28 @@ def check_primary_key_unique(data, meta):
     primary_key_unique_columns = [c for c in data if data[c].is_unique]
     primary_columns_len = len(primary_key_unique_columns)
     if primary_columns_len > 0:
-        yield {
+        return {
             'code': 'check_primary_key_unique',
             'message': '{} | {:.0f}'.format(','.join(primary_key_unique_columns),
                                             primary_columns_len),
             'primary_key_unique_columns': primary_key_unique_columns,
         }
 
-
-
+@tornado.gen.coroutine
 def check_char_len(series, meta, max=50):
     '''Check character length for non numeric columns.'''
-    if not series.name in meta['types']['numbers']:
-        row_numbers = []
-        row_numbers = list(series[series.str.len() > max].index)
-        if len(row_numbers) > 0:
-            yield {
-                'code': 'Character length exceeding 50',
-                'message': 'Column {} | Rows {}'.format(
-                    series.name, ','.join([
-                        '{}'.format(x) for x in row_numbers])),
-                'series': series.name
-            }
+    if series.name in meta['types']['numbers']:
+        return
+    row_numbers = []
+    row_numbers = list(series[series.str.len() > max].index)
+    if len(row_numbers) > 0:
+        return {
+            'code': 'Character length exceeding 50',
+            'message': 'Column {} | Rows {}'.format(
+                series.name, ','.join([
+                    '{}'.format(x) for x in row_numbers])),
+            'series': series.name
+        }
 
 
 def check_prefix_expression(data, meta):
@@ -401,61 +401,63 @@ def check_func(func, v):
     except ValueError:
         return False
 
-
+@tornado.gen.coroutine
 def check_valid_dates(series, meta, thresh=0.7):
-    # yield None
-    if not series.name not in meta['types']['groups']:
-        # yield None
-        uniq = pd.Series(series.unique())
-        is_valid_dates = uniq.apply(lambda v: check_func(dateutil.parser.parse, v))
-        valid_dates = uniq[is_valid_dates[is_valid_dates].index]
-        rows_valid = series[series.isin(valid_dates)]
-        perc_rows_valid = rows_valid.shape[0] / series.shape[0]
-        mess = '{}(dates) | {:.0f}% values are valid dates'.format(
-            series.name, perc_rows_valid*100)
-        if perc_rows_valid > thresh:
-            yield {
-                'code': 'identify_valid_dates',
-                'message': mess,
-                'series': series.name,
-            }
+    return None
+    if series.name not in meta['types']['groups']:
+        return None
+    uniq = pd.Series(series.unique())
+    is_valid_dates = uniq.apply(lambda v: check_func(dateutil.parser.parse, v))
+    valid_dates = uniq[is_valid_dates[is_valid_dates].index]
+    rows_valid = series[series.isin(valid_dates)]
+    perc_rows_valid = rows_valid.shape[0] / series.shape[0]
+    mess = '{}(dates) | {:.0f}% values are valid dates'.format(
+        series.name, perc_rows_valid*100)
+    if perc_rows_valid > thresh:
+        return {
+            'code': 'identify_valid_dates',
+            'message': mess,
+            'series': series.name,
+        }
 
-
+@tornado.gen.coroutine
 def check_negative_numbers(series, meta, thresh=0.02):
     '''
     Function to check if there is any small percentage of negative numbers
     '''
-    if not series.name not in meta['types']['numbers']:
-        # yield None
-        neg_nums_count = (series < 0).sum()
-        perc_negs = neg_nums_count / series.shape[0]
-        if perc_negs < thresh and neg_nums_count != 0:
-            yield {
-                'code': 'negative_values_typed',
-                'message': '{} | {:.0f} values are negative'.format(series.name, neg_nums_count),
-                'series': series.name
-            }
+    if series.name not in meta['types']['numbers']:
+        return None
+    neg_nums_count = (series < 0).sum()
+    perc_negs = neg_nums_count / series.shape[0]
+    if perc_negs < thresh and neg_nums_count != 0:
+        return {
+            'code': 'negative_values_typed',
+            'message': '{} | {:.0f} values are negative'.format(series.name, neg_nums_count),
+            'series': series.name
+        }
 
-
+@tornado.gen.coroutine
 def check_groups_typos(series, meta, thresh=0.02, max_dis=3):
     groups = meta['types']['groups']
     exclusion = meta['types']['dates']
     exclusion.extend(meta['types']['keywords'])
-    if (not (series.name not in groups or series.name in exclusion)):
-        # yield None
-        freqs = series.value_counts()
-        freqs = freqs[(pd.Series(freqs.index).str.len() > 5).values]
-        if not freqs.shape[0] == 0:
-            # yield None
-            typos = []
-            for w1, w2 in combinations(freqs.index, r=2):
-                ed = edit_distance(w1, w2)
-                if ed < max_dis:
-                    typos.append((w1, w2))
-            if len(typos):
-                yield {
-                    'code': 'typo_values_typed',
-                    'message': '{} | {:.0f} typos present'.format(series.name, len(typos)),
-                    'series': series.name,
-                    'typos': typos
-                }
+    print("*" * 100)
+    if series.name not in groups or series.name in exclusion:
+        return None
+    freqs = series.value_counts()
+    freqs = freqs[(pd.Series(freqs.index).str.len() > 5).values]
+    if freqs.shape[0] == 0:
+        return None
+    typos = []
+    print(combinations(freqs.index))
+    for w1, w2 in combinations(freqs.index, r=2):
+        ed = edit_distance(w1, w2)
+        if ed < max_dis:
+            typos.append((w1, w2))
+    if len(typos):
+        return {
+            'code': 'typo_values_typed',
+            'message': '{} | {:.0f} typos present'.format(series.name, len(typos)),
+            'series': series.name,
+            'typos': typos
+        }

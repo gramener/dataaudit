@@ -158,7 +158,7 @@ def missing_values_untyped(series, meta, max=0, values=['', 'NA']):
     if missing > max:
         return {
             'code': 'missing_value_untyped',
-            'message': '{} | {:.0f}'.format(series.name, missing),
+            'message': 'In column {} we have {:.0f} missing values'.format(series.name, missing),
             'series': series.name,
             'missing': missing,
             'na': na,
@@ -172,7 +172,7 @@ def duplicate_rows_untyped(data, meta):
     if count_duplicates > 0:
         return {
             'code': 'duplicate_rows_untyped',
-            'message': '{:.0f}'.format(count_duplicates),
+            'message': 'File contains {:.0f} duplicate row'.format(count_duplicates),
             'duplicates': count_duplicates,
         }
 
@@ -186,10 +186,10 @@ def duplicate_columns_untyped(data, meta):
     if count_duplicates:
         return {
             'code': 'duplicate_columns_untyped',
-            'message': '{} | {:.0f}'.format(
-                ','.join(['({},{})'.format(
+            'message': 'In file {:.0f} set of columns {} have duplicate data'.format(
+                count_duplicates, ','.join(['({},{})'.format(
                     sub_lst[0], sub_lst[1]) for sub_lst in duplicate_columns]),
-                count_duplicates),
+                ),
             'duplicates': count_duplicates,
         }
 
@@ -225,8 +225,7 @@ def count_numeric_outliers(series, meta, low=None, high=None, max=0):
     if outliers > max:
         return {
             'code': 'count_outliers_typed',
-            'message': '{}(numeric) |  \
-            {:.0f}'.format(series.name, outliers),
+            'message': 'Column {} had {:.0f} numeric outlier'.format(series.name, outliers),
             'series': series.name,
             'outliers': outliers,
             'lower_outliers': lower_outliers,
@@ -264,7 +263,7 @@ def count_categorical_outliers(series, meta):
     steepest_slope = series_freq[series_freq.diff() / series_freq.shift(1) < -0.5]
     if len(steepest_slope):
         outliers = len(series_freq[series_freq <= steepest_slope.values[0]])
-        message = '%s(categorical) | %d' % (series.name, outliers)
+        message = 'Column %s had %d categorical outliers' % (series.name, outliers)
         return {
             'code': 'count_categorical_outliers_typed',
             'series': series.name,
@@ -294,7 +293,8 @@ def duplicate_columns_name(data, meta):
     if count_duplicates > 0:
         return {
             'code': 'duplicate_columns_name',
-            'message': '{} | {:.0f}'.format(','.join(duplicates), count_duplicates),
+            'message': 'In file {:.0f} columns names are duplicated {}'.format(
+                count_duplicates, ','.join(duplicates)),
             'duplicates': count_duplicates,
         }
 
@@ -318,7 +318,8 @@ def check_order_id_continuous(data, meta):
     if order_columns_len > 0:
        return {
            'code': 'check_order_id_continuous',
-           'message': 'Missing order id values | {}'.format(','.join(order_id_continuous_columns)),
+           'message': 'Column {} had {} percent continous id'.format(
+               ','.join(order_id_continuous_columns), continous_threshold),
            'order_id_continuous': order_id_continuous_columns,
        }
 
@@ -358,8 +359,8 @@ def check_primary_key_unique(data, meta):
     if primary_columns_len > 0:
         return {
             'code': 'check_primary_key_unique',
-            'message': '{} | {:.0f}'.format(','.join(primary_key_unique_columns),
-                                            primary_columns_len),
+            'message': 'In file {:.0f} column can be considered as primary key {} '.format(
+                primary_columns_len, ','.join(primary_key_unique_columns)),
             'primary_key_unique_columns': primary_key_unique_columns,
         }
 
@@ -373,9 +374,9 @@ def check_char_len(series, meta, max=50):
     if len(row_numbers) > 0:
         return {
             'code': 'Character length exceeding 50',
-            'message': 'Column {} | Rows {}'.format(
+            'message': 'In column {} rows {} have exceeded maximum character length {}'.format(
                 series.name, ','.join([
-                    '{}'.format(x) for x in row_numbers])),
+                    '{}'.format(x) for x in row_numbers]), max),
             'series': series.name
         }
 

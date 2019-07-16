@@ -100,8 +100,8 @@ def types(data):
     '''
     typ = {}
     typ['numbers'] = get_numeric_cols(data)
-    typ['groups'] = list(set(data.columns) - set(typ['numbers']))
     typ['dates'] = [col for col in data.columns if is_date(data[col])]
+    typ['groups'] = list(set(data.columns) - set(typ['numbers']) - set(typ['dates']))
     typ['keywords'] = [col for col in typ['groups'] if has_keywords(data[col])]
     return typ
 
@@ -151,8 +151,12 @@ def missing_values_untyped(series, meta, max=0, values=['', 'NA']):
     Reports number of missing values in a series
     '''
     strings = series[series.apply(lambda v: isinstance(v, six.string_types))]
+    if strings.shape[0]:
+        na = strings[strings.isin(values)].sum()
+    else:
+        na = 0
     values = set(values)
-    na = strings.apply(lambda v: v in values).sum()
+
     null = pd.isnull(series).sum()
     missing = null + na
     if missing > max:
@@ -369,7 +373,7 @@ def check_primary_key_unique(data, meta):
 @tornado.gen.coroutine
 def check_char_len(series, meta, max=50):
     '''Check character length for non numeric columns.'''
-    if series.name in meta['types']['numbers']:
+    if type(series) != six.string_types:
         return
     row_numbers = []
     row_numbers = list(series[series.str.len() > max].index)
